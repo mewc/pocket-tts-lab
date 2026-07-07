@@ -1,0 +1,38 @@
+{
+  "name": "pocket-tts-lab",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun scripts/dev.ts",
+    "dev:web": "next dev --port 4703",
+    "tts": "cd tts-server && uv run uvicorn server:app --host 127.0.0.1 --port 4706",
+    "tts:sync": "cd tts-server && uv sync",
+    "build": "next build",
+    "start": "next start --port 4703",
+    "lint": "eslint --max-warnings 0",
+    "check-types": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@next/eslint-plugin-next": "^16.2.0",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "^22.15.3",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-only-warn": "^1.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "^8.50.0"
+  }
+}
