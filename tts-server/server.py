@@ -362,6 +362,92 @@ async def compare_cloud(req: CloudReq):
     raise HTTPException(400, f"Unknown provider '{req.provider}'")
 
 
+# --- conversation brain (for the Converse demo) ------------------------------
+
+SYSTEM_PROMPT = (
+    "You are a friendly voice assistant in a live demo of a local, CPU-only "
+    "text-to-speech engine. Reply in 1-2 short, natural sentences suitable for "
+    "being spoken aloud. Be warm and concise. No markdown, lists, or emoji."
+)
+
+
+class ChatMsg(BaseModel):
+    role: str
+    content: str
+
+
+class ChatReq(BaseModel):
+    messages: list[ChatMsg]
+
+
+def _local_reply(messages: list[ChatMsg]) -> str:
+    """A tiny keyless demo brain — honest, short, good for showing the STT->TTS loop."""
+    last = next((m.content for m in reversed(messages) if m.role == "user"), "").strip()
+    low = last.lower()
+    if not last:
+        return "I'm listening — go ahead and say something."
+    if any(g in low for g in ("hello", "hi ", "hey", "good morning", "good evening")):
+        return "Hey there! Great to hear you. What's on your mind?"
+    if "your name" in low or "who are you" in low:
+        return "I'm a little demo voice running entirely on your CPU with Pocket TTS."
+    if any(w in low for w in ("bye", "goodbye", "see you", "that's all")):
+        return "Anytime — talk to you later!"
+    if "thank" in low:
+        return "You're very welcome."
+    if low.endswith("?") or low.split(" ", 1)[0] in {
+        "what", "how", "why", "when", "where", "who", "can", "do", "is", "are", "could", "would",
+    }:
+        return (
+            "That's a good one. I can't look things up in this offline demo, but I heard you "
+            f"ask about {last.rstrip('?')}. What else would you like to try?"
+        )
+    return f"Got it — you said: {last}. What else is on your mind?"
+
+
+async def _llm_reply(messages: list[ChatMsg]) -> tuple[str, str] | None:
+    """Route to a real LLM if a key is set. Prefers xAI (Grok), then OpenAI."""
+    import httpx
+
+    xai = os.getenv("XAI_API_KEY")
+    openai = os.getenv("OPENAI_API_KEY")
+    if xai:
+        url = "https://api.x.ai/v1/chat/completions"
+        key, model, brain = xai, os.getenv("XAI_MODEL", "grok-3-mini"), "xai"
+    elif openai:
+        url = "https://api.openai.com/v1/chat/completions"
+        key, model, brain = openai, os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"), "openai"
+    else:
+        return None
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT}]
+        + [{"role": m.role, "content": m.content} for m in messages[-12:]],
+        "max_tokens": 120,
+        "temperature": 0.7,
+    }
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(url, headers={"Authorization": f"Bearer {key}"}, json=payload)
+        r.raise_for_status()
+        text = r.json()["choices"][0]["message"]["content"].strip()
+    return text, f"{brain}:{model}"
+
+
+@app.post("/chat")
+async def chat(req: ChatReq):
+    t0 = time.perf_counter()
+    try:
+        llm = await _llm_reply(req.messages)
+    except Exception as e:  # noqa: BLE001 - fall back to the local brain, never fail the loop
+        llm = None
+        _ = e
+    if llm is not None:
+        reply, brain = llm
+    else:
+        reply, brain = _local_reply(req.messages), "local"
+    return {"reply": reply, "brain": brain, "brain_ms": round((time.perf_counter() - t0) * 1000, 1)}
+
+
 @app.exception_handler(HTTPException)
 async def _http_exc(_, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})

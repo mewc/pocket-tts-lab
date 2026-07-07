@@ -104,6 +104,15 @@ export const benchmark = (body: {
     body: JSON.stringify(body),
   }).then(j) as Promise<BenchResult>;
 
+export type ChatMsg = { role: "user" | "assistant"; content: string };
+
+export const chat = (messages: ChatMsg[]) =>
+  fetch("/api/tts/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages }),
+  }).then(j) as Promise<{ reply: string; brain: string; brain_ms: number }>;
+
 export async function clone(name: string, file: File): Promise<{ voice_id: string }> {
   const fd = new FormData();
   fd.set("name", name);

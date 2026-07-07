@@ -7,11 +7,11 @@ import BenchmarkPanel from "@/components/BenchmarkPanel";
 import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
 
-const TABS = ["Synthesize", "Benchmark", "Clone", "Why care"] as const;
+const TABS = ["Benchmark", "Clone", "Why care"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>("Synthesize");
+  const [tab, setTab] = useState<Tab>("Benchmark");
   const [health, setHealth] = useState<Health | null>(null);
   const [voices, setVoices] = useState<Voices | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -38,15 +38,17 @@ export default function Page() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Pocket TTS Lab <span className="text-neutral-500">·</span>{" "}
-          <span className="text-neutral-400 text-base font-normal">
-            100M-param CPU text-to-speech, measured
-          </span>
+    <main className="mx-auto max-w-3xl px-5 py-10">
+      {/* hero */}
+      <header className="mb-7 text-center sm:text-left">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs text-neutral-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          100M params · CPU-only · MIT · $0 / offline
+        </div>
+        <h1 className="bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl">
+          Talk to Pocket TTS
         </h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-neutral-400 sm:mx-0">
           Kyutai{" "}
           <a
             className="text-sky-400 hover:underline"
@@ -56,33 +58,42 @@ export default function Page() {
           >
             pocket-tts
           </a>{" "}
-          running locally — no GPU, no API, no keys. Prove the claims yourself.
+          runs locally — no GPU, no API, no keys. Pick a voice, type a line, and hear it
+          synthesized on your CPU in milliseconds. Prove the claims yourself.
         </p>
       </header>
 
       <StatusBar health={health} err={err} />
 
-      <nav className="mt-6 flex gap-1 border-b border-neutral-800">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm transition-colors ${
-              tab === t
-                ? "border-b-2 border-sky-400 text-neutral-100"
-                : "text-neutral-500 hover:text-neutral-300"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </nav>
+      {/* the demo, inline as the hero */}
+      <section className="mt-5 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/70 to-neutral-900/30 p-5 shadow-2xl shadow-black/30 sm:p-6">
+        <SynthesizePanel voices={voices} />
+      </section>
 
-      <div className="mt-6">
-        {tab === "Synthesize" && <SynthesizePanel voices={voices} />}
-        {tab === "Benchmark" && <BenchmarkPanel voices={voices} health={health} />}
-        {tab === "Clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
-        {tab === "Why care" && <WhyCarePanel health={health} />}
+      {/* secondary tools */}
+      <div className="mt-10">
+        <p className="mb-3 text-xs uppercase tracking-wide text-neutral-600">More tools</p>
+        <nav className="flex gap-1 border-b border-neutral-800">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm transition-colors ${
+                tab === t
+                  ? "border-b-2 border-sky-400 text-neutral-100"
+                  : "text-neutral-500 hover:text-neutral-300"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </nav>
+
+        <div className="mt-6">
+          {tab === "Benchmark" && <BenchmarkPanel voices={voices} health={health} />}
+          {tab === "Clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
+          {tab === "Why care" && <WhyCarePanel health={health} />}
+        </div>
       </div>
     </main>
   );
