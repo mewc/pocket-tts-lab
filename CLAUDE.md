@@ -61,6 +61,18 @@ bun run dev                 # boots BOTH the sidecar (4706) + Next (4703) → ht
   can't be downloaded the model runs with `has_voice_cloning = False` and only predefined
   voices / exported `.safetensors` work. The Clone tab surfaces this state.
 
+## Converse demo (voice-agent loop)
+
+The **Converse** tab is a live mic→reply→speak loop showing where Pocket TTS fits in a voice
+agent, with a turn-by-turn timeline (latency chips per turn):
+
+- **STT**: browser Web Speech API (`webkitSpeechRecognition`) — no key, live interim transcription.
+  In Chrome this uses the browser's cloud STT (labeled honestly); the mic auto-pauses while the
+  assistant speaks. Chrome/Edge only.
+- **Brain** (`POST /chat`): prefers `XAI_API_KEY` (Grok), then `OPENAI_API_KEY`, else a small
+  keyless **local demo brain** (`_local_reply`). Any LLM error falls back to local — loop never breaks.
+- **Mouth**: Pocket TTS via `/speak/stream` — 100% local, the point of the demo.
+
 ## Captured result (first run, this repo)
 
 On an Apple Silicon Mac (16 cores, torch pinned to **1 thread**, 24 kHz), English `alba`,

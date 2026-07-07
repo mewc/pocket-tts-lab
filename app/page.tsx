@@ -6,12 +6,13 @@ import SynthesizePanel from "@/components/SynthesizePanel";
 import BenchmarkPanel from "@/components/BenchmarkPanel";
 import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
+import ConversePanel from "@/components/ConversePanel";
 
-const TABS = ["Benchmark", "Clone", "Why care"] as const;
+const TABS = ["Converse", "Benchmark", "Clone", "Why care"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>("Benchmark");
+  const [tab, setTab] = useState<Tab>("Converse");
   const [health, setHealth] = useState<Health | null>(null);
   const [voices, setVoices] = useState<Voices | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -90,6 +91,7 @@ export default function Page() {
         </nav>
 
         <div className="mt-6">
+          {tab === "Converse" && <ConversePanel voices={voices} />}
           {tab === "Benchmark" && <BenchmarkPanel voices={voices} health={health} />}
           {tab === "Clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
           {tab === "Why care" && <WhyCarePanel health={health} />}
