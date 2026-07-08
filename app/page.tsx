@@ -7,9 +7,21 @@ import BenchmarkPanel from "@/components/BenchmarkPanel";
 import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
 import ConversePanel from "@/components/ConversePanel";
-import GetStarted from "@/components/GetStarted";
+import RunModal from "@/components/RunModal";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// where is THIS instance running — the user's machine or a hosted server?
+function useRunLocation() {
+  const [loc, setLoc] = useState<{ hosted: boolean; host: string } | null>(null);
+  useEffect(() => {
+    const h = window.location.hostname;
+    const local =
+      h === "localhost" || h === "127.0.0.1" || h === "0.0.0.0" || h.endsWith(".local");
+    setLoc({ hosted: !local, host: window.location.host });
+  }, []);
+  return loc;
+}
 
 const TABS = [
   { id: "voice", label: "Pick a voice to talk to" },
@@ -33,6 +45,9 @@ export default function Page() {
   // nonces let the hero CTAs drive the panels below
   const [speakNonce, setSpeakNonce] = useState(0);
   const [callNonce, setCallNonce] = useState(0);
+
+  const [showRun, setShowRun] = useState(false);
+  const runLoc = useRunLocation();
 
   useEffect(() => {
     let alive = true;
@@ -68,9 +83,17 @@ export default function Page() {
     <main className="mx-auto max-w-3xl px-5 py-10">
       {/* hero */}
       <header className="mb-6 text-center sm:text-left">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs text-neutral-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          100M params · CPU-only · MIT · $0 / offline
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs text-neutral-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            100M params · CPU-only · MIT · $0
+          </div>
+          <button
+            onClick={() => setShowRun(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900/60 px-3 py-1.5 text-xs font-medium text-neutral-200 transition-colors hover:border-sky-500/60 hover:bg-neutral-800 hover:text-white"
+          >
+            ▶ Run it yourself
+          </button>
         </div>
         <h1 className="bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl">
           Talk to Pocket TTS
@@ -106,7 +129,7 @@ export default function Page() {
         </div>
       </header>
 
-      <StatusBar health={health} err={err} />
+      <StatusBar health={health} err={err} runLoc={runLoc} />
 
       {/* button group / tabs */}
       <nav className="mt-6 flex flex-wrap gap-1 border-b border-neutral-800">
@@ -152,12 +175,22 @@ export default function Page() {
         {tab === "why" && <WhyCarePanel health={health} />}
       </div>
 
-      <GetStarted />
+      <RunModal open={showRun} onClose={() => setShowRun(false)} />
     </main>
   );
 }
 
-function StatusBar({ health, err }: { health: Health | null; err: string | null }) {
+type RunLoc = { hosted: boolean; host: string } | null;
+
+function StatusBar({
+  health,
+  err,
+  runLoc,
+}: {
+  health: Health | null;
+  err: string | null;
+  runLoc: RunLoc;
+}) {
   if (err) {
     return (
       <div className="rounded-lg border border-amber-900/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
@@ -184,18 +217,73 @@ function StatusBar({ health, err }: { health: Health | null; err: string | null 
     );
   }
 
+  const cloningOff = !health.has_voice_cloning;
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm">
-      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
-      <span className="text-neutral-300">Model warm</span>
-      <Stat k="sample rate" v={`${(health.sample_rate / 1000).toFixed(0)} kHz`} />
-      <Stat k="cpu cores" v={String(health.cpu_count)} />
-      <Stat k="torch threads" v={String(health.torch_threads)} />
-      <Stat
-        k="voice cloning"
-        v={health.has_voice_cloning ? "available" : "predefined only"}
-      />
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-2.5 text-sm">
+      <span className="inline-flex items-center gap-2 text-neutral-300">
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+        Model warm
+      </span>
+      <LocationBadge runLoc={runLoc} />
+      {cloningOff && (
+        <span
+          title="Voice cloning from your own audio needs Kyutai's gated weights, which aren't loaded — only the built-in voices work."
+          className="inline-flex items-center gap-1 rounded-full border border-amber-800/60 bg-amber-950/40 px-2 py-0.5 text-xs text-amber-300"
+        >
+          ⚠ Cloning limited
+        </span>
+      )}
+      <div className="ml-auto">
+        <InfoPopover health={health} runLoc={runLoc} />
+      </div>
     </div>
+  );
+}
+
+function LocationBadge({ runLoc }: { runLoc: RunLoc }) {
+  if (!runLoc) return null;
+  if (runLoc.hosted) {
+    return (
+      <span
+        title="This is the hosted demo — it runs on a shared server CPU. Click “Run it yourself” to run it on your own machine."
+        className="inline-flex items-center gap-1.5 rounded-full border border-sky-800/60 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+        Hosted demo · {runLoc.host}
+      </span>
+    );
+  }
+  return (
+    <span
+      title="This instance is running on your machine — no cloud involved."
+      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 px-2 py-0.5 text-xs text-emerald-300"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      Running on your machine
+    </span>
+  );
+}
+
+function InfoPopover({ health, runLoc }: { health: Health; runLoc: RunLoc }) {
+  return (
+    <details className="group relative">
+      <summary className="flex h-5 w-5 cursor-pointer list-none items-center justify-center rounded-full border border-neutral-700 text-[11px] font-semibold text-neutral-400 hover:border-neutral-500 hover:text-neutral-200">
+        i
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-neutral-700 bg-neutral-950 p-3 text-xs shadow-2xl">
+        <div className="mb-2 text-[11px] uppercase tracking-wide text-neutral-500">Engine details</div>
+        <InfoRow k="running on" v={runLoc?.hosted ? `hosted · ${runLoc.host}` : "your machine"} />
+        <InfoRow k="sample rate" v={`${(health.sample_rate / 1000).toFixed(0)} kHz`} />
+        <InfoRow k="cpu cores" v={String(health.cpu_count)} />
+        <InfoRow k="torch threads" v={String(health.torch_threads)} />
+        <InfoRow k="brain" v={health.brain} />
+        <InfoRow
+          k="voice cloning"
+          v={health.has_voice_cloning ? "available" : "predefined only"}
+          warn={!health.has_voice_cloning}
+        />
+      </div>
+    </details>
   );
 }
 
@@ -205,10 +293,11 @@ function Spinner() {
   );
 }
 
-function Stat({ k, v }: { k: string; v: string }) {
+function InfoRow({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
   return (
-    <span className="text-neutral-400">
-      {k}: <span className="text-neutral-200">{v}</span>
-    </span>
+    <div className="flex items-center justify-between gap-3 py-0.5">
+      <span className="text-neutral-500">{k}</span>
+      <span className={warn ? "text-amber-300" : "text-neutral-200"}>{v}</span>
+    </div>
   );
 }
