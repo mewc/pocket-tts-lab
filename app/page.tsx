@@ -7,6 +7,7 @@ import BenchmarkPanel from "@/components/BenchmarkPanel";
 import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
 import ConversePanel from "@/components/ConversePanel";
+import GetStarted from "@/components/GetStarted";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -150,6 +151,8 @@ export default function Page() {
         {tab === "clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
         {tab === "why" && <WhyCarePanel health={health} />}
       </div>
+
+      <GetStarted />
     </main>
   );
 }
