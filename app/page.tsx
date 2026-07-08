@@ -7,6 +7,7 @@ import BenchmarkPanel from "@/components/BenchmarkPanel";
 import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
 import ConversePanel from "@/components/ConversePanel";
+import BrowserTTSPanel from "@/components/BrowserTTSPanel";
 import RunModal from "@/components/RunModal";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -27,6 +28,7 @@ const TABS = [
   { id: "voice", label: "Pick a voice to talk to" },
   { id: "converse", label: "Converse" },
   { id: "benchmark", label: "Benchmark" },
+  { id: "browser", label: "In your browser (WASM)" },
   { id: "clone", label: "Clone" },
   { id: "why", label: "Why care" },
 ] as const;
@@ -171,6 +173,7 @@ export default function Page() {
           />
         )}
         {tab === "benchmark" && <BenchmarkPanel voices={voices} health={health} />}
+        {tab === "browser" && <BrowserTTSPanel />}
         {tab === "clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
         {tab === "why" && <WhyCarePanel health={health} />}
       </div>
