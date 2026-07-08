@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+.git
+.env
+.env.local
+tts-server/.venv
+**/__pycache__
+tts-server/voices/*
+!tts-server/voices/.gitkeep
+*.tsbuildinfo

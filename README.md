@@ -5,6 +5,9 @@ a 100M-parameter, CPU-only, MIT-licensed text-to-speech model. Run it, feel it, 
 **measure** the claims yourself (≈6× real-time, ~200 ms to first audio, 5-second voice
 cloning, 6 languages) — no GPU, no API, no keys.
 
+**Live demo: [tts-demo.drummerduck.com](https://tts-demo.drummerduck.com)** (runs on a CPU box —
+the first request warms the model, then it's instant).
+
 > Not affiliated with Kyutai. This is an independent harness around their open-source model.
 
 ## What's inside
@@ -71,6 +74,22 @@ Everything works with **zero keys**. These only enable extras:
   model runs predefined-voices-only and the Clone tab says so.
 - The default Converse brain is a **scripted local demo** — it can't look things up or reason.
   Add an LLM key for real answers.
+
+## Deploy (Docker / Railway)
+
+The whole thing ships as **one container** (`Dockerfile`): the Next server and the Python
+sidecar run side by side, and Next proxies to the sidecar on `127.0.0.1` — so there's a single
+public port and no CORS. It reads `PORT` (the public web port) and `TTS_PORT` (internal sidecar).
+
+```bash
+docker build -t pocket-tts-lab .
+docker run -p 4703:4703 -v pocket-tts-cache:/data pocket-tts-lab
+```
+
+On **Railway**, `railway.json` selects the Dockerfile builder and a `/api/tts/health` healthcheck.
+Mount a **volume at `/data`** so downloaded model weights (`XDG_CACHE_HOME`/`HF_HOME` point there)
+survive restarts — otherwise every cold start re-downloads them. CPU inference is slower than an
+Apple-Silicon Mac, so give it a couple of vCPUs and ≥2 GB RAM for a snappy demo.
 
 ## Credits & license
 
