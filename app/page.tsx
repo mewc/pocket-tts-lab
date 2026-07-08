@@ -30,7 +30,6 @@ const TABS = [
   { id: "benchmark", label: "Benchmark" },
   { id: "browser", label: "In your browser (WASM)" },
   { id: "clone", label: "Clone" },
-  { id: "why", label: "Why care" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -133,16 +132,16 @@ export default function Page() {
 
       <StatusBar health={health} err={err} runLoc={runLoc} />
 
-      {/* button group / tabs */}
-      <nav className="mt-6 flex flex-wrap gap-1 border-b border-neutral-800">
+      {/* tab button group (segmented control) */}
+      <nav className="mt-6 flex flex-wrap gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900/40 p-1.5">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm transition-colors ${
+            className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
               tab === t.id
-                ? "border-b-2 border-sky-400 text-neutral-100"
-                : "text-neutral-500 hover:text-neutral-300"
+                ? "bg-sky-500 text-white shadow-sm shadow-sky-500/20"
+                : "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
             }`}
           >
             {t.label}
@@ -175,11 +174,28 @@ export default function Page() {
         {tab === "benchmark" && <BenchmarkPanel voices={voices} health={health} />}
         {tab === "browser" && <BrowserTTSPanel />}
         {tab === "clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
-        {tab === "why" && <WhyCarePanel health={health} />}
       </div>
+
+      <WhyCareAccordion health={health} />
 
       <RunModal open={showRun} onClose={() => setShowRun(false)} />
     </main>
+  );
+}
+
+function WhyCareAccordion({ health }: { health: Health | null }) {
+  return (
+    <details className="group mt-10 rounded-xl border border-neutral-800 bg-neutral-900/40">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 text-left">
+        <span className="text-sm font-medium text-neutral-100">
+          Why care? <span className="text-neutral-500">— cost, offline, and why it isn’t an LLM</span>
+        </span>
+        <span className="text-neutral-500 transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <div className="border-t border-neutral-800 p-5">
+        <WhyCarePanel health={health} />
+      </div>
+    </details>
   );
 }
 
