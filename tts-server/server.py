@@ -77,7 +77,21 @@ app.add_middleware(
 )
 
 
+# english_2026-04 is the same weights as the default "english" model — alias it so we
+# reuse the already-warm instance instead of loading a second identical copy.
+MODEL_ALIASES = {"english_2026-04": "english"}
+
+
+def _active_brain() -> str:
+    if os.getenv("XAI_API_KEY"):
+        return "xai"
+    if os.getenv("OPENAI_API_KEY"):
+        return "openai"
+    return "local"
+
+
 def _get_model(language: str) -> TTSModel:
+    language = MODEL_ALIASES.get(language, language)
     if language not in LANGUAGES:
         raise HTTPException(400, f"Unknown language '{language}'. Options: {LANGUAGES}")
     with _load_lock:
@@ -171,6 +185,7 @@ async def health():
         "has_voice_cloning": bool(getattr(default, "has_voice_cloning", False)) if default else None,
         "warm": DEFAULT_LANGUAGE in _models,
         "languages": LANGUAGES,
+        "brain": _active_brain(),
     }
 
 
@@ -381,27 +396,44 @@ class ChatReq(BaseModel):
 
 
 def _local_reply(messages: list[ChatMsg]) -> str:
-    """A tiny keyless demo brain — honest, short, good for showing the STT->TTS loop."""
-    last = next((m.content for m in reversed(messages) if m.role == "user"), "").strip()
+    """A tiny keyless demo brain. It CANNOT look things up or reason — it just keeps the
+    STT->TTS loop moving. It's honest about that; set XAI_API_KEY/OPENAI_API_KEY for a real brain.
+    Replies rotate by turn count so it isn't a total broken record."""
+    user_turns = [m.content for m in messages if m.role == "user"]
+    last = (user_turns[-1] if user_turns else "").strip()
     low = last.lower()
+    n = len(user_turns)
     if not last:
         return "I'm listening — go ahead and say something."
     if any(g in low for g in ("hello", "hi ", "hey", "good morning", "good evening")):
-        return "Hey there! Great to hear you. What's on your mind?"
+        return "Hey! Good to hear you. I'm the local demo voice — what should we try?"
     if "your name" in low or "who are you" in low:
-        return "I'm a little demo voice running entirely on your CPU with Pocket TTS."
+        return "I'm Pocket TTS's demo voice, running entirely on your CPU. No cloud involved."
     if any(w in low for w in ("bye", "goodbye", "see you", "that's all")):
         return "Anytime — talk to you later!"
     if "thank" in low:
         return "You're very welcome."
-    if low.endswith("?") or low.split(" ", 1)[0] in {
-        "what", "how", "why", "when", "where", "who", "can", "do", "is", "are", "could", "would",
-    }:
-        return (
-            "That's a good one. I can't look things up in this offline demo, but I heard you "
-            f"ask about {last.rstrip('?')}. What else would you like to try?"
-        )
-    return f"Got it — you said: {last}. What else is on your mind?"
+    # Honest "I don't actually know things" — phrased a few different ways so it varies.
+    knows = (
+        "you know", "do you know", "look up", "what can you", "anything", "tell me about",
+        "who is", "what is", "when", "where", "why", "how many",
+    )
+    if any(k in low for k in knows) or low.endswith("?"):
+        variants = [
+            "Heads up: with no LLM key set, I'm just a scripted demo — I can't actually look "
+            "things up. Add an API key and I'll really answer. What else shall we test?",
+            "I can't answer that for real in offline demo mode — I have no knowledge or search. "
+            "The point here is the voice: fast, local, free. Try asking me to say something.",
+            "That needs a real model, which isn't connected right now. But you can hear how "
+            "quickly I speak — want me to read a longer sentence?",
+        ]
+        return variants[n % len(variants)]
+    echoes = [
+        f"Got it — you said: {last}. What else is on your mind?",
+        f"I heard: “{last}”. Remember, I'm just the demo voice — try connecting a real brain.",
+        f"Nice. “{last}”, spoken back to you locally in a few milliseconds.",
+    ]
+    return echoes[n % len(echoes)]
 
 
 async def _llm_reply(messages: list[ChatMsg]) -> tuple[str, str] | None:

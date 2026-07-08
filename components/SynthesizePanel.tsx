@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { speak, streamSpeak, type SpeakMetrics, type Voices } from "@/lib/tts";
 import { Button, ErrorNote, Metric, Select } from "@/components/ui";
 
@@ -19,10 +19,23 @@ const hue = (s: string) => {
 const greeting = (name: string) =>
   `Hi, I'm ${cap(name)}. This is what I sound like, running entirely on your CPU.`;
 
-export default function SynthesizePanel({ voices }: { voices: Voices | null }) {
+export default function SynthesizePanel({
+  voices,
+  voice,
+  setVoice,
+  language,
+  setLanguage,
+  speakNonce = 0,
+}: {
+  voices: Voices | null;
+  voice: string;
+  setVoice: (v: string) => void;
+  language: string;
+  setLanguage: (l: string) => void;
+  /** bump to trigger a Speak from outside (e.g. the hero CTA) */
+  speakNonce?: number;
+}) {
   const [text, setText] = useState(SAMPLE);
-  const [language, setLanguage] = useState("english");
-  const [voice, setVoice] = useState("alba");
   const [busy, setBusy] = useState<"" | "speak" | "stream" | "sample">("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<SpeakMetrics | null>(null);
@@ -77,6 +90,17 @@ export default function SynthesizePanel({ voices }: { voices: Voices | null }) {
       setBusy("");
     }
   };
+
+  // let an external CTA (the hero "Speak as …" button) fire a Speak
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    if (text.trim()) void doSpeak();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speakNonce]);
 
   // one-tap "hear this voice" — speaks a short greeting so you can meet each persona
   const hearVoice = async (v: string) => {

@@ -8,14 +8,30 @@ import ClonePanel from "@/components/ClonePanel";
 import WhyCarePanel from "@/components/WhyCarePanel";
 import ConversePanel from "@/components/ConversePanel";
 
-const TABS = ["Converse", "Benchmark", "Clone", "Why care"] as const;
-type Tab = (typeof TABS)[number];
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const TABS = [
+  { id: "voice", label: "Pick a voice to talk to" },
+  { id: "converse", label: "Converse" },
+  { id: "benchmark", label: "Benchmark" },
+  { id: "clone", label: "Clone" },
+  { id: "why", label: "Why care" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>("Converse");
+  const [tab, setTab] = useState<Tab>("voice");
   const [health, setHealth] = useState<Health | null>(null);
   const [voices, setVoices] = useState<Voices | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // shared voice/language selection, surfaced in the hero and used by both demos
+  const [voice, setVoice] = useState("alba");
+  const [language, setLanguage] = useState("english");
+
+  // nonces let the hero CTAs drive the panels below
+  const [speakNonce, setSpeakNonce] = useState(0);
+  const [callNonce, setCallNonce] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -38,10 +54,19 @@ export default function Page() {
     };
   }, []);
 
+  const onSpeak = () => {
+    setTab("voice");
+    setSpeakNonce((n) => n + 1);
+  };
+  const onStartCall = () => {
+    setTab("converse");
+    setCallNonce((n) => n + 1);
+  };
+
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
       {/* hero */}
-      <header className="mb-7 text-center sm:text-left">
+      <header className="mb-6 text-center sm:text-left">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs text-neutral-400">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           100M params · CPU-only · MIT · $0 / offline
@@ -59,43 +84,71 @@ export default function Page() {
           >
             pocket-tts
           </a>{" "}
-          runs locally — no GPU, no API, no keys. Pick a voice, type a line, and hear it
-          synthesized on your CPU in milliseconds. Prove the claims yourself.
+          runs locally — no GPU, no API, no keys. Pick a voice and hear it synthesized on your
+          CPU in milliseconds, or start a live voice call. Prove the claims yourself.
         </p>
+
+        {/* primary CTAs */}
+        <div className="mt-5 flex flex-wrap justify-center gap-3 sm:justify-start">
+          <button
+            onClick={onSpeak}
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-colors hover:bg-sky-400"
+          >
+            🔊 Speak as {cap(voice)}
+          </button>
+          <button
+            onClick={onStartCall}
+            className="inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900/60 px-5 py-2.5 text-sm font-semibold text-neutral-100 transition-colors hover:border-neutral-500 hover:bg-neutral-800"
+          >
+            🎤 Start a call
+          </button>
+        </div>
       </header>
 
       <StatusBar health={health} err={err} />
 
-      {/* the demo, inline as the hero */}
-      <section className="mt-5 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/70 to-neutral-900/30 p-5 shadow-2xl shadow-black/30 sm:p-6">
-        <SynthesizePanel voices={voices} />
-      </section>
+      {/* button group / tabs */}
+      <nav className="mt-6 flex flex-wrap gap-1 border-b border-neutral-800">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 text-sm transition-colors ${
+              tab === t.id
+                ? "border-b-2 border-sky-400 text-neutral-100"
+                : "text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      {/* secondary tools */}
-      <div className="mt-10">
-        <p className="mb-3 text-xs uppercase tracking-wide text-neutral-600">More tools</p>
-        <nav className="flex gap-1 border-b border-neutral-800">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm transition-colors ${
-                tab === t
-                  ? "border-b-2 border-sky-400 text-neutral-100"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-6">
-          {tab === "Converse" && <ConversePanel voices={voices} />}
-          {tab === "Benchmark" && <BenchmarkPanel voices={voices} health={health} />}
-          {tab === "Clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
-          {tab === "Why care" && <WhyCarePanel health={health} />}
-        </div>
+      <div className="mt-6">
+        {tab === "voice" && (
+          <SynthesizePanel
+            voices={voices}
+            voice={voice}
+            setVoice={setVoice}
+            language={language}
+            setLanguage={setLanguage}
+            speakNonce={speakNonce}
+          />
+        )}
+        {tab === "converse" && (
+          <ConversePanel
+            voices={voices}
+            health={health}
+            voice={voice}
+            setVoice={setVoice}
+            language={language}
+            setLanguage={setLanguage}
+            startNonce={callNonce}
+          />
+        )}
+        {tab === "benchmark" && <BenchmarkPanel voices={voices} health={health} />}
+        {tab === "clone" && <ClonePanel voices={voices} onCloned={() => void getVoices()} />}
+        {tab === "why" && <WhyCarePanel health={health} />}
       </div>
     </main>
   );
@@ -107,25 +160,31 @@ function StatusBar({ health, err }: { health: Health | null; err: string | null 
       <div className="rounded-lg border border-amber-900/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
         Sidecar not reachable yet: <span className="font-mono">{err}</span>
         <div className="mt-1 text-amber-300/70">
-          First run downloads model weights from HuggingFace (slow, ~once). Start it with{" "}
-          <span className="font-mono">bun run dev</span>.
+          First run downloads model weights from HuggingFace (slow, ~once).
         </div>
       </div>
     );
   }
-  if (!health) {
+
+  // startup / warming → clean loading spinner (the model warms in the background)
+  if (!health || !health.warm) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm text-neutral-400">
-        Connecting to the TTS sidecar…
+      <div className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm text-neutral-300">
+        <Spinner />
+        <span>
+          {!health ? "Connecting to the TTS engine…" : "Warming up the model…"}
+          <span className="ml-1 text-neutral-500">
+            first load downloads weights, then it’s instant
+          </span>
+        </span>
       </div>
     );
   }
+
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm">
-      <Dot ok={health.warm} />
-      <span className="text-neutral-300">
-        {health.warm ? "Model warm" : "Warming up model…"}
-      </span>
+      <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+      <span className="text-neutral-300">Model warm</span>
       <Stat k="sample rate" v={`${(health.sample_rate / 1000).toFixed(0)} kHz`} />
       <Stat k="cpu cores" v={String(health.cpu_count)} />
       <Stat k="torch threads" v={String(health.torch_threads)} />
@@ -137,13 +196,9 @@ function StatusBar({ health, err }: { health: Health | null; err: string | null 
   );
 }
 
-function Dot({ ok }: { ok: boolean }) {
+function Spinner() {
   return (
-    <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${
-        ok ? "bg-emerald-400" : "bg-amber-400 animate-pulse"
-      }`}
-    />
+    <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-neutral-600 border-t-sky-400" />
   );
 }
 
