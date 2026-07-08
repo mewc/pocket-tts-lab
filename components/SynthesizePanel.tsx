@@ -91,14 +91,14 @@ export default function SynthesizePanel({
     }
   };
 
-  // let an external CTA (the hero "Speak as …" button) fire a Speak
-  const didMount = useRef(false);
+  // let an external CTA (the hero "Speak as …" button) fire a Speak — including when
+  // the click also switches to this tab, which mounts the panel fresh with a bumped nonce.
+  const didSpeakNonce = useRef(0);
   useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      return;
+    if (speakNonce > 0 && speakNonce !== didSpeakNonce.current) {
+      didSpeakNonce.current = speakNonce;
+      if (text.trim()) void doSpeak();
     }
-    if (text.trim()) void doSpeak();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakNonce]);
 
